@@ -173,13 +173,6 @@ describe('fastboot server task', function() {
       useStub = this.sinon.stub(mockApp, 'use');
     });
 
-    it('runs npm install in server root', function() {
-      return task.start(options)
-        .then(() => {
-          expect(execStub.calledWith('npm install', { cwd: 'dist' })).to.equal(true);
-        });
-    });
-
     it('requires server dependencies', function() {
       return task.start(options)
         .then(() => {
