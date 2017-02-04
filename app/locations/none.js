@@ -39,7 +39,9 @@ export default Ember.NoneLocation.extend({
   },
 
   setURL(path) {
+    console.log('SETURL');
     if (get(this, 'fastboot.isFastBoot')) {
+      console.log('FFFF');
       let currentPath = get(this, 'path');
       let isInitialPath = !currentPath || currentPath.length === 0;
       path = this._normalizePath(path, isInitialPath);
@@ -57,6 +59,7 @@ export default Ember.NoneLocation.extend({
 
       // for testing and debugging
       if(get(this, '_fastbootHeadersEnabled')) {
+        console.log('SETTING');
         response.headers.set('x-fastboot-path', path);
       }
     }
