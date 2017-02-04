@@ -15,7 +15,8 @@ describe('error handler acceptance', function() {
     return app.create('error-handler')
       .then(function() {
         return app.startServer({
-          command: 'fastboot'
+          command: 'fastboot',
+          additionalArguments: ['--serve-assets']
         });
       });
   });

@@ -15,7 +15,8 @@ describe('custom htmlFile', function() {
     return app.create('custom-html-file')
       .then(function() {
         return app.startServer({
-          command: 'fastboot'
+          command: 'fastboot',
+          additionalArguments: ['--serve-assets']
         });
       });
   });

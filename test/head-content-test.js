@@ -16,7 +16,8 @@ describe('head content acceptance', function() {
       .then(addDependencies)
       .then(function() {
         return app.startServer({
-          command: 'fastboot'
+          command: 'fastboot',
+          additionalArguments: ['--serve-assets']
         });
       });
   });
