@@ -15,8 +15,7 @@ describe('shoebox - put', function() {
     return app.create('shoebox')
       .then(function() {
         return app.startServer({
-          command: 'fastboot',
-          additionalArguments: ['--serve-assets']
+          command: 'fastboot'
         });
       });
   });

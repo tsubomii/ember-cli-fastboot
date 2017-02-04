@@ -15,8 +15,7 @@ describe('simple acceptance', function() {
     return app.create('dummy')
       .then(function() {
         return app.startServer({
-          command: 'fastboot',
-          additionalArguments: ['--serve-assets']
+          command: 'fastboot'
         });
       });
   });
