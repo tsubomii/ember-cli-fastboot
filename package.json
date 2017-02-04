@@ -29,7 +29,7 @@
     "ember-cli-babel": "^5.1.7",
     "ember-cli-version-checker": "^1.1.6",
     "express": "^4.8.5",
-    "fastboot-express-middleware": "git://github.com/kratiahuja/fastboot-express-middleware.git#cf1b1f3a52ff5c695d2632cd77027c6ee44a6738",
+    "fastboot-express-middleware": "git://github.com/kratiahuja/fastboot-express-middleware.git#dc57c113c205503fd0bc71e04d63916788e10cb2",
     "fastboot-filter-initializers": "0.0.2",
     "lodash.defaults": "^4.0.1",
     "lodash.uniq": "^4.2.0",
