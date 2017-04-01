@@ -19,8 +19,9 @@
     "test:precook": "node node_modules/ember-cli-addon-tests/scripts/precook-node-modules.js"
   },
   "dependencies": {
-    "broccoli-funnel": "^1.0.0",
-    "broccoli-merge-trees": "^1.1.1",
+    "broccoli-concat": "^3.2.2",
+    "broccoli-funnel": "^1.1.0",
+    "broccoli-merge-trees": "^2.0.0",
     "broccoli-plugin": "^1.2.1",
     "broccoli-stew": "^1.2.0",
     "compression": "^1.6.2",
@@ -29,6 +30,7 @@
     "ember-cli-babel": "^5.1.7",
     "ember-cli-eslint": "^3.0.2",
     "ember-cli-version-checker": "^1.1.6",
+    "exists-sync": "^0.0.4",
     "express": "^4.8.5",
     "fastboot-express-middleware": "1.0.0-rc.7",
     "fastboot-filter-initializers": "0.0.2",

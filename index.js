@@ -13,6 +13,12 @@ var fastbootAppModule = require('./lib/utilities/fastboot-app-module');
 var filterInitializers = require('fastboot-filter-initializers');
 var FastBootBuild      = require('./lib/broccoli/fastboot-build');
 
+const BroccoliMergeTrees = require('broccoli-merge-trees');
+const Funnel = require('broccoli-funnel');
+const Concat = require('broccoli-concat');
+const p = require('ember-cli-preprocess-registry/preprocessors');
+const existsSync = require('exists-sync');
+
 /*
  * Main entrypoint for the Ember CLI addon.
  */
@@ -53,6 +59,11 @@ module.exports = {
    */
   included: function(app) {
     patchEmberApp(app);
+
+    // get the app registry object and app name so that we can build the fastboot
+    // tree
+    this._appRegistry = app.registry;
+    this._name = app.name;
   },
 
   config: function() {
@@ -99,6 +110,66 @@ module.exports = {
     }
 
     return mergeTrees(trees, { overwrite: true });
+  },
+
+  /**
+   * Function that builds the fastboot tree from all fastboot complaint addons
+   * and project and transpiles it into appname-fastboot.js
+   */
+  _getFastbootTree: function() {
+    var appName = this._name;
+    var nodeModulesPath = this.project.nodeModulesPath;
+
+    var fastbootTrees = [];
+    this.project.addons.forEach((addon) => {
+      // walk through each addon and grab its fastboot tree
+      var currentAddonFastbootPath = path.join(nodeModulesPath, addon.name, 'fastboot');
+      // TODO: throw a warning if app/iniitalizer/[browser|fastboot] exists
+
+      if (existsSync(currentAddonFastbootPath)) {
+        var fastbootTree = new Funnel(currentAddonFastbootPath, {
+          destDir: appName + '-fastboot'
+        });
+
+        fastbootTrees.push(fastbootTree);
+      }
+    });
+
+    // check the parent containing the fastboot directory
+    var projectFastbootPath = path.join(this.project.root, 'fastboot');
+    if (existsSync(projectFastbootPath)) {
+      var fastbootTree = new Funnel(projectFastbootPath, {
+        destDir: appName + '-fastboot'
+      });
+
+      fastbootTrees.push(fastbootTree);
+    }
+
+    var fastbootTree = new BroccoliMergeTrees(fastbootTrees);
+
+    var processExtraTree = p.preprocessJs(fastbootTree, '/', this._name, {
+      registry: this._appRegistry
+    });
+
+    // TODO: this file needs to be added in fastboot package.json when
+    var finalFastbootTree = Concat(processExtraTree, {
+      outputFile: 'assets/' + appName + '-fastboot.js'
+    });
+
+    return finalFastbootTree;
+  },
+
+  treeForPublic(tree) {
+    let fastbootTree = this._getFastbootTree();
+    let trees = [];
+    if (tree) {
+      trees.push(tree);
+    }
+    trees.push(fastbootTree);
+
+    let newTree = new BroccoliMergeTrees(trees);
+
+    return newTree;
   },
 
   /**

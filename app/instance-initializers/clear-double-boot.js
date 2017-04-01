@@ -16,13 +16,15 @@ export default {
     var originalDidCreateRootView = instance.didCreateRootView;
 
     instance.didCreateRootView = function() {
-      let elements = document.querySelectorAll(instance.rootElement + ' .ember-view');
-      for (let i = 0; i < elements.length; i++) {
-        let element = elements[i];
-        element.parentNode.removeChild(element);
-      }
+      if (typeof FastBoot === 'undefined') {
+        let elements = document.querySelectorAll(instance.rootElement + ' .ember-view');
+        for (let i = 0; i < elements.length; i++) {
+          let element = elements[i];
+          element.parentNode.removeChild(element);
+        }
 
-      originalDidCreateRootView.apply(instance, arguments);
+        originalDidCreateRootView.apply(instance, arguments);
+      }
     };
   }
 }
