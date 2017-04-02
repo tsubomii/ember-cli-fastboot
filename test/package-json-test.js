@@ -64,9 +64,9 @@ describe('generating package.json', function() {
       var pkg = fs.readJsonSync(app.filePath('/dist/package.json'));
 
       expect(pkg.fastboot.manifest).to.deep.equal({
-        appFiles: ['fastboot/module-whitelist.js'],
+        appFiles: ['assets/module-whitelist.js', 'assets/module-whitelist-fastboot.js'],
         htmlFile: 'index.html',
-        vendorFiles: ['fastboot/vendor.js']
+        vendorFiles: ['assets/vendor.js']
       });
     });
 
@@ -163,7 +163,7 @@ describe('generating package.json', function() {
     before(function() {
       return customApp.create('customized-outputpaths')
         .then(function() {
-          return customApp.run('ember', 'build', '--environment', 'production');
+          return customApp.run('ember', 'build');
         });
     });
 
