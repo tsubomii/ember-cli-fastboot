@@ -2,18 +2,18 @@
 'use strict';
 
 var path = require('path');
+var fs = require('fs');
 
 var EventEmitter = require('events').EventEmitter;
 var mergeTrees = require('broccoli-merge-trees');
 var VersionChecker = require('ember-cli-version-checker');
 
-var patchEmberApp     = require('./lib/ext/patch-ember-app');
+//var patchEmberApp     = require('./lib/ext/patch-ember-app');
 var fastbootAppModule = require('./lib/utilities/fastboot-app-module');
 
-var filterInitializers = require('fastboot-filter-initializers');
-var FastBootBuild      = require('./lib/broccoli/fastboot-build');
+//var filterInitializers = require('fastboot-filter-initializers');
+var FastBootConfig      = require('./lib/broccoli/fastboot-config');
 
-const BroccoliMergeTrees = require('broccoli-merge-trees');
 const Funnel = require('broccoli-funnel');
 const Concat = require('broccoli-concat');
 const p = require('ember-cli-preprocess-registry/preprocessors');
@@ -35,9 +35,6 @@ module.exports = {
   includedCommands: function() {
     return {
       'fastboot':       require('./lib/commands/fastboot')(this),
-
-      /* fastboot:build is deprecated and will be removed in a future version */
-      'fastboot:build': require('./lib/commands/fastboot-build')
     };
   },
 
@@ -58,18 +55,12 @@ module.exports = {
    * we mixin additional Ember addon hooks appropriate to the current build target.
    */
   included: function(app) {
-    patchEmberApp(app);
-
+    app.options.autoRun = false;
     // get the app registry object and app name so that we can build the fastboot
     // tree
     this._appRegistry = app.registry;
     this._name = app.name;
-  },
-
-  config: function() {
-    if (this.app && this.app.options.__is_building_fastboot__) {
-      return { APP: { autoboot: false } };
-    }
+    //patchEmberApp(app);
   },
 
   /**
@@ -87,29 +78,22 @@ module.exports = {
     }
 
     if (type === 'app-boot') {
-      return fastbootAppModule(config.modulePrefix);
+      return fastbootAppModule(config.modulePrefix, JSON.stringify(config.APP || {}));
     }
 
-    if (type === 'config-module' && this.app.options.__is_building_fastboot__) {
-      var linesToRemove = contents.length;
-      while(linesToRemove) {
-        // Clear out the default config from ember-cli
-        contents.pop();
-        linesToRemove--;
-      }
-
-      return 'return FastBoot.config();';
+    // if the fastboot addon is installed, we overwrite the config-module so that the config can be read
+    // from meta tag for browser build and from Fastboot config for fastboot target
+    if (type === 'config-module') {
+      var emberCliPath = path.join(this.app.project.nodeModulesPath, 'ember-cli');
+      contents.splice(0, contents.length);
+      contents.push('if (typeof FastBoot !== \'undefined\') {');
+      contents.push('return FastBoot.config();');
+      contents.push('} else {');
+      contents.push('var prefix = \'' + config.modulePrefix + '\';');
+      contents.push(fs.readFileSync(path.join(emberCliPath, 'lib/broccoli/app-config-from-meta.js')));
+      contents.push('}');
+      return;
     }
-  },
-
-  treeForApp: function(defaultTree) {
-    var trees = [defaultTree];
-
-    if (this._getEmberVersion().lt('2.10.0-alpha.1')) {
-      trees.push(this.treeGenerator(path.resolve(this.root, 'app-lt-2-9')));
-    }
-
-    return mergeTrees(trees, { overwrite: true });
   },
 
   /**
@@ -128,7 +112,7 @@ module.exports = {
 
       if (existsSync(currentAddonFastbootPath)) {
         var fastbootTree = new Funnel(currentAddonFastbootPath, {
-          destDir: appName + '-fastboot'
+          destDir: appName
         });
 
         fastbootTrees.push(fastbootTree);
@@ -139,13 +123,22 @@ module.exports = {
     var projectFastbootPath = path.join(this.project.root, 'fastboot');
     if (existsSync(projectFastbootPath)) {
       var fastbootTree = new Funnel(projectFastbootPath, {
-        destDir: appName + '-fastboot'
+        destDir: appName
       });
 
       fastbootTrees.push(fastbootTree);
     }
 
-    var fastbootTree = new BroccoliMergeTrees(fastbootTrees);
+    // check the ember-cli version
+    if (this._getEmberVersion().lt('2.10.0-alpha.1')) {
+      var fastbootTree = new Funnel(path.resolve(this.root, 'fastboot-app-lt-2-9'), {
+        destDir: appName
+      });
+
+      fastbootTrees.push(fastbootTree);
+    }
+
+    var fastbootTree = new mergeTrees(fastbootTrees);
 
     var processExtraTree = p.preprocessJs(fastbootTree, '/', this._name, {
       registry: this._appRegistry
@@ -167,18 +160,28 @@ module.exports = {
     }
     trees.push(fastbootTree);
 
-    let newTree = new BroccoliMergeTrees(trees);
+    let newTree = new mergeTrees(trees);
 
     return newTree;
   },
+
+  /*treeForApp: function(defaultTree) {
+    var trees = [defaultTree];
+
+    if (this._getEmberVersion().lt('2.10.0-alpha.1')) {
+      trees.push(this.treeGenerator(path.resolve(this.root, 'app-lt-2-9')));
+    }
+
+    return mergeTrees(trees, { overwrite: true });
+  },*/
 
   /**
    * Filters out initializers and instance initializers that should only run in
    * browser mode.
    */
-  preconcatTree: function(tree) {
+  /*preconcatTree: function(tree) {
     return filterInitializers(tree, this.app.name);
-  },
+  },*/
 
   /**
    * After the entire Broccoli tree has been built for the `dist` directory,
@@ -188,26 +191,37 @@ module.exports = {
    * disable the fastboot build while retaining the fastboot service.
    */
   postprocessTree: function(type, tree) {
-    if (type === 'all' && !process.env.FASTBOOT_DISABLED) {
-      var fastbootTree = this.buildFastBootTree();
+    if (type === 'all') {
+      var fastbootConfigTree = this.buildFastbootConfigTree(tree);
 
       // Merge the package.json with the existing tree
-      return mergeTrees([tree, fastbootTree], {overwrite: true});
+      return mergeTrees([tree, fastbootConfigTree], {overwrite: true});
     }
 
     return tree;
   },
 
-  buildFastBootTree: function() {
-    var fastbootBuild = new FastBootBuild({
-      ui: this.ui,
+  buildFastbootConfigTree : function(tree) {
+    var env = this.app.env;
+    var config = this.project.config(env);
+    var fastbootConfig = config.fastboot;
+    if (config.hasOwnProperty('APP')) {
+      config['APP']['autoboot'] = false;
+    } else {
+      config['APP'] = {
+        'autoboot': false
+      }
+    }
+
+    return new FastBootConfig(tree, {
       assetMapPath: this.assetMapPath,
       project: this.project,
-      app: this.app,
-      parent: this.parent
+      name: this.app.name,
+      outputPaths: this.app.options.outputPaths,
+      ui: this.ui,
+      fastbootAppConfig: fastbootConfig,
+      appConfig: config
     });
-
-    return fastbootBuild.toTree();
   },
 
   outputReady: function() {

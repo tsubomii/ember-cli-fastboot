@@ -29,6 +29,7 @@ export default {
   name: 'ajax-service',
 
   initialize: function(application) {
+    console.log('ddd123');
     application.register('ajax:node', nodeAjax, { instantiate: false });
     application.inject('adapter', '_ajaxRequest', 'ajax:node');
     application.inject('adapter', 'fastboot', 'service:fastboot');
