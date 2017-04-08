@@ -176,7 +176,7 @@ module.exports = {
           // forward the request to the next middleware (example other assets, proxy etc)
           next();
         }
-      })
+      });
     }
   },
 
